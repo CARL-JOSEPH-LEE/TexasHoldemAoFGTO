@@ -1,0 +1,38 @@
+# Local environment files
+.env
+.env.*
+!.env.example
+!.env.sample
+
+# Python virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Python cache and local test cache
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Intermediate build output
+build/
+dist/
+
+# Final portable GUI package is intentionally tracked
+!gui_portable/
+!gui_portable/TexasHoldemAoFGTO/
+!gui_portable/TexasHoldemAoFGTO/**
+
+# Local IDE / editor settings
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS metadata
+.DS_Store
+Thumbs.db
+desktop.ini
