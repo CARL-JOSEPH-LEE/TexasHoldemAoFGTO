@@ -63,6 +63,7 @@ Default model:
 - Equal total stacks = 10 BB
 - Blinds are included in the stack
 - GUI default rake = 3% of the pot, uncapped, with no rake on uncontested pots
+- Optional fixed rake: charge a fixed amount, such as 0.5 BB, per eligible pot
 - CLI default rake = 0%; use `--rake-percent 3` to enable 3% rake
 - No flop, turn, or river decisions
 - If all-in is called, five board cards are dealt and hands go to showdown
@@ -72,7 +73,9 @@ At 10 BB:
 - SB has posted 0.5 BB, so SB adds 9.5 BB to jam.
 - BB has posted 1 BB, so BB adds 9 BB to call.
 
-Uncalled excess bets are returned before rake. Rake is taken once from the pot, including folded blinds, before distributing winnings or splitting ties. A configurable per-hand cap is supported; cap 0 means uncapped.
+Uncalled excess bets are returned before rake. Rake is taken once from the pot, including folded blinds, before distributing winnings or splitting ties. Percentage mode supports a configurable per-hand cap; cap 0 means uncapped.
+
+Fixed mode charges the configured BB amount regardless of pot size: both a 21.5 BB pot and a 40 BB pot pay 0.5 BB when fixed rake is 0.5 BB. The charge never exceeds the pot. The “no rake on uncontested pots” setting applies in both modes; fixed rake is not combined with percentage rake or its cap. Select “固定金额” in the GUI and train a new strategy for that rule.
 
 For example, four players each contributing 10 BB create a 40 BB pot: 3% rake is 1.2 BB, leaving 38.8 BB for the winner. The current model uses equal stacks and no ante; unequal-stack side pots are not supported.
 
@@ -158,7 +161,7 @@ python -m pip install -r requirements-build.txt
 .\package_gui.bat
 ```
 
-The default output is `dist/AoFStudio-3.0.0-windows-x64.zip`, including source and license materials. For the optional single-file build, run `python tools/package_gui.py --format onefile`.
+The default output is `dist/AoFStudio-3.1.0-windows-x64.zip`, including source and license materials. For the optional single-file build, run `python tools/package_gui.py --format onefile`.
 
 ---
 
@@ -189,6 +192,14 @@ Train 4-player with 3% rake and save a checkpoint:
 ```powershell
 build\aof2_train.exe --players 4 --rake-percent 3 --iters 100000000 --threads 8 --strategy data/local/my_4p.bin --checkpoint data/local/my_4p.checkpoint
 ```
+
+Train the same game with fixed 0.5 BB rake:
+
+```powershell
+build\aof2_train.exe --players 4 --rake-fixed 0.5 --iters 100000000 --threads 8 --strategy data/local/my_4p_fixed.bin --checkpoint data/local/my_4p_fixed.checkpoint
+```
+
+Fixed-rake strategies and checkpoints store their mode and amount. Existing percentage-rake files remain readable; changing rake requires a separate training run. CLI fixed mode uses `--rake-fixed` without `--rake-percent`, `--rake`, or `--rake-cap`.
 
 The default stratified engine starts without an equity-table precomputation. The legacy `--engine table` remains available for historical 2/3-player, no-rake models; it does not support four players or rake. Sampling counts are not full poker hands or a guarantee of convergence.
 
@@ -263,6 +274,7 @@ GUI 还支持本地训练、断点续训、单手独立评估、策略对比、C
 - 各玩家总筹码相同，默认 10 BB
 - 盲注已经计入总筹码
 - GUI 默认抽水为底池的 3%，不封顶，无人跟注不抽水
+- 可切换为固定抽水，例如每个符合条件的底池固定收取 0.5 BB
 - 命令行默认不抽水，使用 `--rake-percent 3` 开启 3% 抽水
 - 没有翻牌、转牌、河牌决策
 - 如果 all-in 被 call，就直接发五张公共牌比牌
@@ -272,7 +284,9 @@ GUI 还支持本地训练、断点续训、单手独立评估、策略对比、C
 - SB 已经下了 0.5 BB，所以全下时再补 9.5 BB。
 - BB 已经下了 1 BB，所以跟注时再补 9 BB。
 
-未被跟注的多余下注先退回，不参与抽水。弃牌玩家投入的盲注计入底池，先对整个底池抽水一次，再分配给胜者；平局平分扣除抽水后的底池。可设置每局封顶，封顶 0 表示不封顶。
+未被跟注的多余下注先退回，不参与抽水。弃牌玩家投入的盲注计入底池，先对整个底池抽水一次，再分配给胜者；平局平分扣除抽水后的底池。比例抽水可设置每局封顶，封顶 0 表示不封顶。
+
+固定抽水模式按设定的 BB 金额收费，与底池大小无关：设为 0.5 BB 时，21.5 BB 和 40 BB 的底池都只抽 0.5 BB。抽水不超过实际底池；“无人跟注不抽水”开关在两种模式下都生效。固定抽水不叠加比例或比例封顶。在 GUI 中选择“固定金额”，输入金额后重新训练该规则下的策略。
 
 例如四人各投入 10 BB，底池 40 BB，3% 抽水为 1.2 BB，胜者分得 38.8 BB。当前模型为等筹码、无前注，不支持不等筹码边池。
 
@@ -358,7 +372,7 @@ python -m pip install -r requirements-build.txt
 .\package_gui.bat
 ```
 
-默认生成 `dist/AoFStudio-3.0.0-windows-x64.zip`，包含源码与许可材料。单文件版本使用 `python tools/package_gui.py --format onefile` 构建。
+默认生成 `dist/AoFStudio-3.1.0-windows-x64.zip`，包含源码与许可材料。单文件版本使用 `python tools/package_gui.py --format onefile` 构建。
 
 ---
 
@@ -389,6 +403,14 @@ build\aof2_train.exe --players 3 --iters 100000000 --threads 8
 ```powershell
 build\aof2_train.exe --players 4 --rake-percent 3 --iters 100000000 --threads 8 --strategy data/local/my_4p.bin --checkpoint data/local/my_4p.checkpoint
 ```
+
+同样的四人规则，改用固定 0.5 BB 抽水：
+
+```powershell
+build\aof2_train.exe --players 4 --rake-fixed 0.5 --iters 100000000 --threads 8 --strategy data/local/my_4p_fixed.bin --checkpoint data/local/my_4p_fixed.checkpoint
+```
+
+策略与检查点会保存固定抽水的模式和金额。旧版比例策略仍可载入；更改抽水规则需单独训练。命令行固定模式只传 `--rake-fixed`，不要同时传 `--rake-percent`、`--rake` 或 `--rake-cap`。
 
 默认分层引擎可以直接训练，无需预计算 equity 表。旧版 `--engine table` 仍可用于历史无抽水 2/3 人模型，不支持四人或抽水。采样次数不是完整牌局数，也不代表已经达到某个收敛精度。
 

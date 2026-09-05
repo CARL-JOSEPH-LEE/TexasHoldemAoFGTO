@@ -70,6 +70,7 @@ struct Args
         "  --checkpoint-every <N> sample budget between saves (default 10000000)\n"
         "  --rake-percent <P>   pot rake percentage, e.g. 3 = 3% (default 0)\n"
         "  --rake <fraction>    alternative fraction, e.g. 0.03 = 3%\n"
+        "  --rake-fixed <BB>    fixed rake per eligible pot; excludes percentage/cap options\n"
         "  --rake-cap <BB>      cap per hand; 0 = unlimited (default 0)\n"
         "  --rake-uncontested   also rake matched pots when everyone folds\n"
         "  --no-flop-no-drop    no rake without showdown (default)\n"
@@ -95,6 +96,7 @@ Args parse(int argc, char** argv)
 {
     Args a;
     bool iters_set = false, log_set = false, strategy3_set = false;
+    bool percentage_set = false, fixed_set = false, cap_set = false;
     auto integer = [](const std::string& s) -> uint64_t {
         if (s.empty() || s.find_first_not_of("0123456789") != std::string::npos)
             throw std::invalid_argument("expected a nonnegative integer: " + s);
@@ -137,9 +139,12 @@ Args parse(int argc, char** argv)
             if (n < 1 || n > 1024) throw std::invalid_argument("batch-samples must be 1..1024");
             a.batch_samples = static_cast<unsigned>(n);
         }
-        else if (arg == "--rake-percent") a.rake.rate = real(need(1)) / 100.0;
-        else if (arg == "--rake") a.rake.rate = real(need(1));
-        else if (arg == "--rake-cap") a.rake.cap = real(need(1));
+        else if (arg == "--rake-percent") { a.rake.rate = real(need(1)) / 100.0; percentage_set = true; }
+        else if (arg == "--rake") { a.rake.rate = real(need(1)); percentage_set = true; }
+        else if (arg == "--rake-cap") { a.rake.cap = real(need(1)); cap_set = true; }
+        else if (arg == "--rake-fixed") {
+            a.rake.fixed = real(need(1)); a.rake.mode = aof2::RakeMode::Fixed; fixed_set = true;
+        }
         else if (arg == "--rake-uncontested") a.rake.no_flop_no_drop = false;
         else if (arg == "--no-flop-no-drop") a.rake.no_flop_no_drop = true;
         else if (arg == "--seed") a.seed = integer(need(1));
@@ -165,6 +170,8 @@ Args parse(int argc, char** argv)
         else { std::cerr << "unknown arg: " << arg << "\n"; usage_die(); }
     }
     a.params.validate();
+    if (fixed_set && (percentage_set || cap_set))
+        throw std::invalid_argument("--rake-fixed cannot be combined with --rake-percent, --rake or --rake-cap");
     a.rake.validate();
     if (a.iterations == 0 || a.iterations > 1000000000000ULL || a.eval_samples < 2 || a.eval_samples > 1000000000000ULL)
         throw std::invalid_argument("iters must be 1..10^12; eval-samples must be 2..10^12");
@@ -182,8 +189,8 @@ Args parse(int argc, char** argv)
     if (a.engine != "stratified" && (!a.checkpoint_path.empty() || !a.resume_path.empty()))
         throw std::invalid_argument("checkpoints require the stratified engine");
     if (a.engine == "table") {
-        if (a.players == 4 || a.rake.rate != 0 || a.rake.cap != 0 || !a.rake.no_flop_no_drop || !a.csv_path.empty())
-            throw std::invalid_argument("4P, rake and CSV require --engine sampled");
+        if (a.players == 4 || a.rake.rate != 0 || a.rake.cap != 0 || a.rake.is_fixed() || !a.rake.no_flop_no_drop || !a.csv_path.empty())
+            throw std::invalid_argument("4P, rake and CSV require --engine stratified or sampled");
         if (!iters_set) a.iterations = 200000;
         if (!log_set) a.log_every = 1000;
         if (a.strategy_path.empty()) a.strategy_path = "data/strategy.bin";
@@ -195,8 +202,10 @@ Args parse(int argc, char** argv)
         if (a.strategy_path.empty()) {
             std::ostringstream name;
             name << "data/strategy_" << a.engine << '_' << a.players << "p_" << a.params.stack << "bb_sb" << a.params.sb_blind
-                 << "_bb" << a.params.bb_blind << "_rake" << a.rake.rate * 100 << "_cap" << a.rake.cap
-                 << (a.rake.no_flop_no_drop ? "_nfnd.bin" : "_allpots.bin");
+                 << "_bb" << a.params.bb_blind;
+            if (a.rake.is_fixed()) name << "_rake-fixed" << a.rake.fixed;
+            else name << "_rake" << a.rake.rate * 100 << "_cap" << a.rake.cap;
+            name << (a.rake.no_flop_no_drop ? "_nfnd.bin" : "_allpots.bin");
             a.strategy_path = name.str();
         }
     }
@@ -357,9 +366,10 @@ int main(int argc, char** argv)
             ensure_dir_for(a.strategy_path);
             ensure_dir_for(a.csv_path);
             aof2::MultiwayGame game(a.players, a.params, a.rake);
-            std::cerr << "[rules] players=" << a.players << " stack=" << a.params.stack
-                      << " rake=" << a.rake.rate * 100 << "% cap=" << a.rake.cap
-                      << " no_flop_no_drop=" << a.rake.no_flop_no_drop << " nodes=" << game.nodes.size() << '\n';
+            std::cerr << "[rules] players=" << a.players << " stack=" << a.params.stack << " rake=";
+            if (a.rake.is_fixed()) std::cerr << "fixed " << a.rake.fixed << " BB";
+            else std::cerr << a.rake.rate * 100 << "% cap=" << a.rake.cap;
+            std::cerr << " no_flop_no_drop=" << a.rake.no_flop_no_drop << " nodes=" << game.nodes.size() << '\n';
             aof2::StratifiedSolver::Config cfg;
             cfg.iterations = a.iterations; cfg.seed = a.seed; cfg.threads = a.threads;
             cfg.evaluation_samples = a.eval_samples; cfg.log_every = a.log_every;

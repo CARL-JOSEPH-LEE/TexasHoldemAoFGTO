@@ -51,4 +51,4 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: AoFStudio-Windows
-          path: dist/AoFStudio-3.0.0-windows-x64.zip
+          path: dist/AoFStudio-*-windows-x64.zip

@@ -156,8 +156,9 @@ void checkpoint(const std::string& name, const MultiwayGame& game, const Stratif
     auto temporary = path; temporary += ".tmp";
     std::ofstream out(temporary, std::ios::trunc);
     out.imbue(std::locale::classic()); out << std::setprecision(17);
-    out << "AOFCHK3\n" << game.players << ' ' << game.params.sb_blind << ' ' << game.params.bb_blind << ' '
-        << game.params.stack << ' ' << game.rake.rate << ' ' << game.rake.cap << ' ' << game.rake.no_flop_no_drop << '\n'
+    out << "AOFCHK4\n" << game.players << ' ' << game.params.sb_blind << ' ' << game.params.bb_blind << ' '
+        << game.params.stack << ' ' << game.rake.rate << ' ' << game.rake.cap << ' ' << game.rake.no_flop_no_drop
+        << ' ' << static_cast<unsigned>(game.rake.mode) << ' ' << game.rake.fixed << '\n'
         << cfg.seed << ' ' << cfg.linear_weighting << ' ' << cfg.samples_per_stratum << ' ' << LANES << ' '
         << step << ' ' << average_weight << ' ' << game.nodes.size() << '\n'
         << static_cast<unsigned>(cfg.discounting) << ' ' << cfg.schedule_sweeps << '\n';
@@ -175,20 +176,25 @@ uint64_t restore(const std::string& name, const MultiwayGame& game, StratifiedSo
     if (std::filesystem::file_size(path) > 8000000) throw std::invalid_argument("checkpoint too large");
     std::ifstream in(path); in.imbue(std::locale::classic());
     std::string magic; std::getline(in, magic);
-    if (magic != "AOFCHK2" && magic != "AOFCHK3") throw std::invalid_argument("invalid checkpoint format");
+    if (magic != "AOFCHK2" && magic != "AOFCHK3" && magic != "AOFCHK4") throw std::invalid_argument("invalid checkpoint format");
     int players = 0, nfnd = 0, linear = 0; GameParams p; RakeRules r;
     uint64_t seed = 0, step = 0, rows = 0; unsigned batch = 0, lanes = 0;
     in >> players >> p.sb_blind >> p.bb_blind >> p.stack >> r.rate >> r.cap >> nfnd;
+    unsigned mode = 0;
+    if (magic == "AOFCHK4") in >> mode >> r.fixed;
+    r.mode = static_cast<RakeMode>(mode);
+    r.no_flop_no_drop = nfnd != 0;
+    r.validate();
     in >> seed >> linear >> batch >> lanes >> step >> average_weight >> rows;
     unsigned discount = 0; uint64_t horizon = 0;
-    if (magic == "AOFCHK3") in >> discount >> horizon;
+    if (magic != "AOFCHK2") in >> discount >> horizon;
     if (discount != static_cast<unsigned>(cfg.discounting) || horizon > 1000000000000ULL
         || (discount == 2 && !horizon) || (discount != 2 && horizon)
         || (cfg.schedule_sweeps && cfg.schedule_sweeps != horizon))
         throw std::invalid_argument("checkpoint algorithm or fixed schedule horizon differs");
     cfg.schedule_sweeps = horizon;
     if (!in || players != game.players || p.sb_blind != game.params.sb_blind || p.bb_blind != game.params.bb_blind
-        || p.stack != game.params.stack || r.rate != game.rake.rate || r.cap != game.rake.cap
+        || p.stack != game.params.stack || !(r == game.rake)
         || nfnd != game.rake.no_flop_no_drop || seed != cfg.seed || linear != cfg.linear_weighting
         || batch != cfg.samples_per_stratum || lanes != LANES || rows != game.nodes.size() || step > 1000000000000ULL)
         throw std::invalid_argument("checkpoint rules, seed, weighting or batch size differ from requested training");
@@ -216,8 +222,7 @@ StratifiedSolver::HandAudit StratifiedSolver::evaluate_hand(const SampledStrateg
     strategy.validate();
     if (strategy.players != game_.players || strategy.params.stack != game_.params.stack
         || strategy.params.sb_blind != game_.params.sb_blind || strategy.params.bb_blind != game_.params.bb_blind
-        || strategy.rake.rate != game_.rake.rate || strategy.rake.cap != game_.rake.cap
-        || strategy.rake.no_flop_no_drop != game_.rake.no_flop_no_drop)
+        || !(strategy.rake == game_.rake))
         throw std::invalid_argument("strategy rules differ from evaluator");
     if (node >= strategy.nodes.size() || hand < 0 || hand >= NUM_HAND_CLASSES || samples < 2
         || samples > 1000000000000ULL || !std::isfinite(confidence) || confidence <= 0 || confidence >= 1)

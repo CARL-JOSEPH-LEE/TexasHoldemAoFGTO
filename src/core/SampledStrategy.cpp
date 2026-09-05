@@ -72,10 +72,11 @@ void SampledStrategy::save(const std::string& path) const {
     std::ostringstream f(std::ios::binary);
     if (!f) throw std::runtime_error("cannot write strategy: " + path);
     f.write("AOFMSTR1", 8);
-    write(f, uint32_t{3}); write(f, uint32_t(players));
+    write(f, uint32_t{4}); write(f, uint32_t(players));
     write(f, uint32_t{NUM_HAND_CLASSES}); write(f, uint32_t(nodes.size()));
     for (double d : {params.sb_blind, params.bb_blind, params.stack, rake.rate, rake.cap}) write(f, d);
     write(f, uint32_t(rake.no_flop_no_drop));
+    write(f, static_cast<uint32_t>(rake.mode)); write(f, rake.fixed);
     for (uint64_t v : {iterations, seed, evaluation_samples}) write(f, v);
     for (double v : ev) write(f, v);
     for (double v : ev_std_error) write(f, v);
@@ -110,8 +111,8 @@ void SampledStrategy::load(const std::string& path) {
     f.read(magic, 8);
     if (!f || std::memcmp(magic, "AOFMSTR1", 8)) throw std::runtime_error("not a sampled strategy file");
     const auto version = read<uint32_t>(f);
-    if (version != 1 && version != 2 && version != 3) throw std::runtime_error("unsupported sampled strategy version");
-    if (version == 3) {
+    if (version < 1 || version > 4) throw std::runtime_error("unsupported sampled strategy version");
+    if (version >= 3) {
         if (bytes.size() < 16) throw std::runtime_error("truncated strategy checksum");
         std::istringstream trailer(bytes.substr(bytes.size() - 4), std::ios::binary);
         bytes.resize(bytes.size() - 4);
@@ -129,6 +130,10 @@ void SampledStrategy::load(const std::string& path) {
     const auto flag = read<uint32_t>(f);
     if (flag > 1) throw std::runtime_error("invalid rake flag");
     result.rake.no_flop_no_drop = flag != 0;
+    if (version >= 4) {
+        result.rake.mode = static_cast<RakeMode>(read<uint32_t>(f));
+        result.rake.fixed = read<double>(f);
+    }
     result.iterations = read<uint64_t>(f); result.seed = read<uint64_t>(f); result.evaluation_samples = read<uint64_t>(f);
     for (double& v : result.ev) v = read<double>(f);
     for (double& v : result.ev_std_error) v = read<double>(f);
@@ -159,7 +164,7 @@ void SampledStrategy::export_csv(const std::string& path) const {
     if (!f) throw std::runtime_error("cannot write CSV: " + path);
     f.imbue(std::locale::classic());
     f << std::setprecision(12);
-    f << "players,stack_bb,sb_blind,bb_blind,rake_percent,rake_cap_bb,no_flop_no_drop,position,prior_mask,hand,all_in_frequency,action_ev_bb,fold_ev_bb,history_reach,effective_samples,action_ev_std_error,advantage_lower,advantage_upper,simultaneous_confidence,training_method,training_samples,audit_samples,deviation_upper\n";
+    f << "players,stack_bb,sb_blind,bb_blind,rake_percent,rake_cap_bb,no_flop_no_drop,position,prior_mask,hand,all_in_frequency,action_ev_bb,fold_ev_bb,history_reach,effective_samples,action_ev_std_error,advantage_lower,advantage_upper,simultaneous_confidence,training_method,training_samples,audit_samples,deviation_upper,rake_mode,rake_fixed_bb\n";
     const MultiwayGame game(players, params, rake);
     for (const auto& node : nodes) for (int h = 0; h < NUM_HAND_CLASSES; ++h) {
         f << players << ',' << params.stack << ',' << params.sb_blind << ',' << params.bb_blind << ','
@@ -173,7 +178,8 @@ void SampledStrategy::export_csv(const std::string& path) const {
         if (audit_samples && node.effective_samples[h] > 0)
             f << node.action_ev_std_error[h] << ',' << node.advantage_lower[h] << ',' << node.advantage_upper[h];
         else f << ",,";
-        f << ',' << confidence << ',' << training_method << ',' << iterations << ',' << audit_samples << ',' << deviation_upper << '\n';
+        f << ',' << confidence << ',' << training_method << ',' << iterations << ',' << audit_samples << ',' << deviation_upper
+          << ',' << (rake.is_fixed() ? "fixed" : "percentage") << ',' << rake.fixed << '\n';
     }
     f.close();
     if (!f) throw std::runtime_error("CSV write failed");

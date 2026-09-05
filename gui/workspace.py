@@ -10,7 +10,7 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
-VERSION = "3.0.0"
+VERSION = "3.1.0"
 
 
 def utc_now():

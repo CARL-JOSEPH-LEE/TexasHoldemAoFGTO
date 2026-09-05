@@ -130,6 +130,8 @@ class GameParams:
     rake_rate: float = 0.0
     rake_cap: float = 0.0
     no_flop_no_drop: bool = True
+    rake_mode: str = "percentage"
+    rake_fixed: float = 0.0
 
     def __post_init__(self) -> None:
         if not all(
@@ -140,6 +142,7 @@ class GameParams:
                 self.stack,
                 self.rake_rate,
                 self.rake_cap,
+                self.rake_fixed,
             )
         ):
             raise ValueError("规则参数必须是有限数字")
@@ -147,6 +150,12 @@ class GameParams:
             raise ValueError("必须满足 0 < 小盲 ≤ 大盲 < 筹码 ≤ 1000000")
         if not 0 <= self.rake_rate <= 1 or self.rake_cap < 0:
             raise ValueError("抽水必须为 0–100%，封顶金额不能为负数")
+        if self.rake_mode not in ("percentage", "fixed") or self.rake_fixed < 0:
+            raise ValueError("抽水模式无效或固定金额为负数")
+        if (self.rake_mode == "fixed" and (self.rake_rate != 0 or self.rake_cap != 0)) or (
+            self.rake_mode == "percentage" and self.rake_fixed != 0
+        ):
+            raise ValueError("固定抽水不能与比例抽水、比例封顶同时使用")
 
 
 @dataclass
@@ -418,6 +427,8 @@ class StrategyDocument:
         p = self.params
         cap = f"封顶 {p.rake_cap:g} BB" if p.rake_cap else "不封顶"
         drop = "仅摊牌抽水" if p.no_flop_no_drop else "含无人跟注"
+        if p.rake_mode == "fixed":
+            return f"{self.players}人 · {p.stack:g} BB · 固定抽水 {p.rake_fixed:g} BB · {drop}"
         return f"{self.players}人 · {p.stack:g} BB · 抽水 {p.rake_rate * 100:g}% · {cap} · {drop}"
 
     def export_csv(self, path: Path) -> None:
@@ -448,6 +459,8 @@ class StrategyDocument:
                     "training_samples",
                     "audit_samples",
                     "deviation_upper",
+                    "rake_mode",
+                    "rake_fixed_bb",
                 )
             )
             p = self.params
@@ -479,6 +492,8 @@ class StrategyDocument:
                             self.iterations,
                             self.audit_samples,
                             self.deviation_upper,
+                            p.rake_mode,
+                            p.rake_fixed,
                         )
                     )
 
@@ -555,10 +570,10 @@ def load_strategy(path: Path) -> StrategyDocument:
         return values
 
     version, players, hands, count = read("IIII")
-    if version not in (1, 2, 3) or hands != NUM_HAND_CLASSES or count != len(decision_layout(players)):
+    if version not in (1, 2, 3, 4) or hands != NUM_HAND_CLASSES or count != len(decision_layout(players)):
         raise ValueError("不支持的策略版本、人数或决策数量")
     source_hash = hashlib.sha256(data).hexdigest()
-    if version == 3:
+    if version >= 3:
         if len(data) < 28 or zlib.crc32(data[:-4]) != struct.unpack_from("<I", data, len(data) - 4)[0]:
             raise ValueError("策略文件校验失败，内容可能损坏")
         data = data[:-4]
@@ -566,7 +581,10 @@ def load_strategy(path: Path) -> StrategyDocument:
     (flag,) = read("I")
     if flag not in (0, 1):
         raise ValueError("无效的抽水规则标志")
-    params = GameParams(sb, bb, stack, rate, cap, bool(flag))
+    mode, fixed = read("Id") if version >= 4 else (0, 0.0)
+    if mode not in (0, 1):
+        raise ValueError("无效的抽水模式")
+    params = GameParams(sb, bb, stack, rate, cap, bool(flag), ("percentage", "fixed")[mode], fixed)
     iterations, seed, evaluation_samples = read("QQQ")
     if iterations > 1000010000000 or evaluation_samples > 1000010000000:
         raise ValueError("策略采样数量无效")

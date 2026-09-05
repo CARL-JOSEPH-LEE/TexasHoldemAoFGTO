@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(AoF2 VERSION 3.0.0 LANGUAGES CXX)
+project(AoF2 VERSION 3.1.0 LANGUAGES CXX)
 include(CTest)
 
 set(CMAKE_CXX_STANDARD 17)

@@ -318,6 +318,7 @@ class AppWindow(AnalysisTools, QMainWindow):
         left.addWidget(label("修改参数后点击开始训练，生成对应规则的范围。", "Muted", True))
         self.config_widget = QWidget()
         form = QFormLayout(self.config_widget)
+        self.rules_form = form
         form.setContentsMargins(0, 0, 0, 0)
         form.setVerticalSpacing(6)
         form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow)
@@ -329,6 +330,14 @@ class AppWindow(AnalysisTools, QMainWindow):
         self.sb_input = self._double(0.001, 1000000, 0.5, " BB", 3)
         self.bb_input = self._double(0.001, 1000000, 1, " BB", 3)
         self.rake_input = self._double(0, 100, 3, " %", 3)
+        self.rake_mode_input = QComboBox()
+        self.rake_mode_input.addItem("按底池比例", "percentage")
+        self.rake_mode_input.addItem("固定金额", "fixed")
+        self.fixed_rake_input = self._double(0, 1000000, 0.5, " BB", 3)
+        self.fixed_rake_input.setToolTip(
+            "每个符合抽水条件的底池只收取一次固定金额；超过实际底池时按底池金额收取。"
+            "“无人跟注不抽水”开关仍然生效。"
+        )
         self.cap_input = self._double(0, 1000000, 0, " BB", 3)
         self.cap_input.setSpecialValueText("不封顶")
         for text, w in (
@@ -336,10 +345,14 @@ class AppWindow(AnalysisTools, QMainWindow):
             ("总筹码", self.stack_input),
             ("小盲", self.sb_input),
             ("大盲", self.bb_input),
+            ("抽水方式", self.rake_mode_input),
             ("底池抽水", self.rake_input),
             ("每局封顶", self.cap_input),
+            ("固定抽水", self.fixed_rake_input),
         ):
             form.addRow(text, w)
+        self.rake_mode_input.currentIndexChanged.connect(self._update_rake_mode)
+        self._update_rake_mode()
         self.algorithm_input = QComboBox()
         for title, value in (("线性 CFR", "none"), ("DCFR（实验）", "dcfr"), ("HS-DCFR（实验）", "hs-dcfr")):
             self.algorithm_input.addItem(title, value)
@@ -561,7 +574,7 @@ class AppWindow(AnalysisTools, QMainWindow):
         about.setReadOnly(True)
         about.setPlainText(
             f"Texas Hold’em AoF Studio {VERSION}\n\n"
-            "适用范围\n翻前全下 / 弃牌，2–4 人等筹码，无前注。总筹码包含盲注。底池只抽水一次，未跟注部分返还；可配置比例、封顶和无人跟注不抽水。\n\n"
+            "适用范围\n翻前全下 / 弃牌，2–4 人等筹码，无前注。总筹码包含盲注。底池只抽水一次，未跟注部分返还；支持比例抽水或固定 BB 抽水，两种模式均可设置无人跟注不抽水。固定抽水不超过实际底池，比例模式另可设置封顶。\n\n"
             "读懂结果\nEV 以发盲注前的筹码为基准。混合频率是采样策略。逐手置信区间跨过零时，现有样本不能明确区分行动优劣。单手精算采用新随机样本，区间只针对该次固定预算评估。\n\n"
             "训练算法\n线性 CFR 为已验证基线。DCFR 与 2026 年 HS-DCFR 是可选实验实现；四人及抽水博弈没有沿用双人零和的纳什收敛保证。检查点保存完整训练状态，HS 调度周期在首次训练时固定，延长后保持末端参数。\n\n"
             "数据与隐私\n策略、训练命令、日志、检查点均保存在本机，无遥测。界面参数只作用于下一次训练。训练记录保存引擎和结果的 SHA-256，载入记录时检查结果是否变化。\n\n"
@@ -739,14 +752,23 @@ class AppWindow(AnalysisTools, QMainWindow):
             except OSError as e:
                 self.status_label.setText(f"导出失败：{e}")
 
+    def _update_rake_mode(self):
+        fixed = self.rake_mode_input.currentData() == "fixed"
+        self.rules_form.setRowVisible(self.rake_input, not fixed)
+        self.rules_form.setRowVisible(self.cap_input, not fixed)
+        self.rules_form.setRowVisible(self.fixed_rake_input, fixed)
+
     def training_args(self, output: Path) -> list[str]:
+        fixed = self.rake_mode_input.currentData() == "fixed"
         p = GameParams(
             self.sb_input.value(),
             self.bb_input.value(),
             self.stack_input.value(),
-            self.rake_input.value() / 100,
-            self.cap_input.value(),
+            0.0 if fixed else self.rake_input.value() / 100,
+            0.0 if fixed else self.cap_input.value(),
             self.no_flop.isChecked(),
+            self.rake_mode_input.currentData(),
+            self.fixed_rake_input.value() if fixed else 0.0,
         )
         args = [
             "--engine",
@@ -763,10 +785,6 @@ class AppWindow(AnalysisTools, QMainWindow):
             str(p.sb_blind),
             "--bb-blind",
             str(p.bb_blind),
-            "--rake-percent",
-            str(p.rake_rate * 100),
-            "--rake-cap",
-            str(p.rake_cap),
             "--iters",
             str(self.samples_input.value()),
             "--eval-samples",
@@ -784,6 +802,10 @@ class AppWindow(AnalysisTools, QMainWindow):
             "--checkpoint",
             str(output.with_suffix(".checkpoint")),
         ]
+        if fixed:
+            args += ["--rake-fixed", str(p.rake_fixed)]
+        else:
+            args += ["--rake-percent", str(p.rake_rate * 100), "--rake-cap", str(p.rake_cap)]
         if not p.no_flop_no_drop:
             args.append("--rake-uncontested")
         return args
@@ -826,15 +848,20 @@ class AppWindow(AnalysisTools, QMainWindow):
                 raise ValueError("检查点文件过大")
             with Path(checkpoint).open(encoding="ascii") as f:
                 magic = f.readline().strip()
-                if magic not in ("AOFCHK2", "AOFCHK3"):
+                if magic not in ("AOFCHK2", "AOFCHK3", "AOFCHK4"):
                     raise ValueError("不是可恢复的训练检查点")
                 rules = f.readline().split()
                 state = f.readline().split()
-                optimizer = f.readline().split() if magic == "AOFCHK3" else ["0", "0"]
-            if len(rules) != 7 or len(state) != 7:
+                optimizer = f.readline().split() if magic != "AOFCHK2" else ["0", "0"]
+            if len(rules) != (9 if magic == "AOFCHK4" else 7) or len(state) != 7:
                 raise ValueError("检查点头部损坏")
             players = int(rules[0])
-            params = GameParams(*map(float, rules[1:6]), bool(int(rules[6])))
+            mode, fixed_amount = (int(rules[7]), float(rules[8])) if magic == "AOFCHK4" else (0, 0.0)
+            if mode not in (0, 1) or int(rules[6]) not in (0, 1):
+                raise ValueError("检查点抽水模式无效")
+            params = GameParams(
+                *map(float, rules[1:6]), bool(int(rules[6])), ("percentage", "fixed")[mode], fixed_amount
+            )
             seed, linear, batch, lanes, steps = map(int, state[:5])
             if (
                 players not in (2, 3, 4)
@@ -856,12 +883,14 @@ class AppWindow(AnalysisTools, QMainWindow):
             stamp = datetime.now().astimezone().strftime("%Y%m%d_%H%M%S_%f")
             output = directory / f"strategy_{players}p_{stamp}.bin"
             self.players_input.setCurrentIndex(players - 2)
+            self.rake_mode_input.setCurrentIndex(mode)
             for widget, value in (
                 (self.stack_input, params.stack),
                 (self.sb_input, params.sb_blind),
                 (self.bb_input, params.bb_blind),
                 (self.rake_input, params.rake_rate * 100),
                 (self.cap_input, params.rake_cap),
+                (self.fixed_rake_input, params.rake_fixed),
                 (self.seed_input, seed),
             ):
                 widget.setValue(value)
@@ -872,11 +901,13 @@ class AppWindow(AnalysisTools, QMainWindow):
                 "--stack": params.stack,
                 "--sb-blind": params.sb_blind,
                 "--bb-blind": params.bb_blind,
-                "--rake-percent": params.rake_rate * 100,
-                "--rake-cap": params.rake_cap,
                 "--seed": seed,
                 "--iters": completed + added,
             }
+            if params.rake_mode == "fixed":
+                replacements["--rake-fixed"] = params.rake_fixed
+            else:
+                replacements.update({"--rake-percent": params.rake_rate * 100, "--rake-cap": params.rake_cap})
             for option, value in replacements.items():
                 args[args.index(option) + 1] = str(value)
             args += [

@@ -152,8 +152,8 @@ def test_file_validation_and_discovery(generated, tmp_path):
         with pytest.raises((ValueError, struct.error)):
             load_strategy(path)
     damaged = bytearray(original)
-    # v2 header 272 bytes; node identity 8 bytes; first frequency follows.
-    struct.pack_into("<d", damaged, 280, float("nan"))
+    # v4 header 284 bytes; node identity 8 bytes; first frequency follows.
+    struct.pack_into("<d", damaged, 292, float("nan"))
     path.write_bytes(damaged)
     with pytest.raises(ValueError):
         load_strategy(path)

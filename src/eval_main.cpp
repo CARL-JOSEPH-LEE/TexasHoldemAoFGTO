@@ -97,8 +97,10 @@ int run_eval(int argc, char** argv)
         }
         if (method == "stratified") aof2::StratifiedSolver(game).evaluate(s, samples, audit_samples, seed, threads);
         else aof2::SampledSolver(game).evaluate(s, samples, seed, threads);
-        std::cout << "Players=" << s.players << " stack=" << s.params.stack << " BB rake=" << s.rake.rate * 100
-                  << "% cap=" << s.rake.cap << " no_flop_no_drop=" << s.rake.no_flop_no_drop << '\n';
+        std::cout << "Players=" << s.players << " stack=" << s.params.stack << " BB rake=";
+        if (s.rake.is_fixed()) std::cout << "fixed " << s.rake.fixed << " BB";
+        else std::cout << s.rake.rate * 100 << "% cap=" << s.rake.cap;
+        std::cout << " no_flop_no_drop=" << s.rake.no_flop_no_drop << '\n';
         for (int p = 0; p < s.players; ++p)
             std::cout << game.position(p) << " EV=" << s.ev[p] << " BB/hand; SE=" << s.ev_std_error[p] << '\n';
         std::cout << "Expected rake=" << s.expected_rake << " BB/hand\nSampled deviation sum="

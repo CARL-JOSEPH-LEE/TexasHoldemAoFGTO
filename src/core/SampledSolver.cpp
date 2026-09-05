@@ -179,8 +179,7 @@ void SampledSolver::evaluate(SampledStrategy& strategy, uint64_t samples, uint64
     strategy.validate();
     if (strategy.players != game_.players || strategy.params.stack != game_.params.stack
         || strategy.params.sb_blind != game_.params.sb_blind || strategy.params.bb_blind != game_.params.bb_blind
-        || strategy.rake.rate != game_.rake.rate || strategy.rake.cap != game_.rake.cap
-        || strategy.rake.no_flop_no_drop != game_.rake.no_flop_no_drop)
+        || !(strategy.rake == game_.rake))
         throw std::invalid_argument("strategy rules do not match evaluator rules");
     strategy.audit_samples = 0; strategy.confidence = 0; strategy.deviation_upper = 0;
     strategy.conditional_ev.fill(0); strategy.conditional_ev_std_error.fill(0);

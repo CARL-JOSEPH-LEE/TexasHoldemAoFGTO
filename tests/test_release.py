@@ -75,9 +75,9 @@ def test_strategy_checksum_catches_valid_looking_numeric_corruption(tmp_path):
     path = tmp_path / "strategy.bin"
     invoke(TRAIN, "--players", 4, "--iters", 1000, "--eval-samples", 1000, "--strategy", path)
     payload = bytearray(path.read_bytes())
-    assert struct.unpack_from("<I", payload, 8)[0] == 3
+    assert struct.unpack_from("<I", payload, 8)[0] == 4
     # Still a valid probability. Domain validation alone cannot detect this change.
-    struct.pack_into("<d", payload, 280, 0.123456)
+    struct.pack_into("<d", payload, 292, 0.123456)
     path.write_bytes(payload)
     with pytest.raises(ValueError, match="校验"):
         load_strategy(path)
@@ -118,7 +118,8 @@ def test_workspace_durable_history_and_interruption_detection(tmp_path, monkeypa
 
 def test_version_and_atomic_output_aliases(tmp_path):
     assert json.loads(invoke(TRAIN, "--version").stdout)["version"] == VERSION
-    assert json.loads(invoke(EVAL, "--version").stdout)["strategy_schema"] == 3
+    assert json.loads(invoke(EVAL, "--version").stdout)["strategy_schema"] == 4
+    assert json.loads(invoke(EVAL, "--version").stdout)["fixed_rake"] is True
     output = tmp_path / "result.bin"
     invoke(TRAIN, "--strategy", output, "--checkpoint", str(output) + ".tmp", success=False)
     if os.name == "nt":

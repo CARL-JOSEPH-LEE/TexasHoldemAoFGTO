@@ -154,8 +154,9 @@ void training_tests() {
     // stack. NFND permits profitable steals; raking all pots makes stealing
     // worse than folding too. This checks learning, not just finite outputs.
     c.iterations = 1000000; c.linear_weighting = true;
-    for (bool nfnd : {false, true}) {
-        MultiwayGame extreme(4, {}, {1, 0, nfnd});
+    for (bool nfnd : {false, true}) for (bool fixed : {false, true}) {
+        const RakeRules rake = fixed ? RakeRules{0, 0, nfnd, RakeMode::Fixed, 100} : RakeRules{1, 0, nfnd};
+        MultiwayGame extreme(4, {}, rake);
         const auto answer = StratifiedSolver(extreme).solve(c);
         for (const auto& node : answer.nodes) for (double f : node.frequency) {
             if (nfnd && !node.decision.prior_mask) check(f > .95, "learns to steal all hands in exactly solved NFND game");

@@ -9,18 +9,35 @@
 
 namespace aof2 {
 
+enum class RakeMode : uint32_t { Percentage = 0, Fixed = 1 };
+
 struct RakeRules {
     double rate = 0.0;     // fraction, e.g. 0.03 = 3 percent
     double cap = 0.0;      // BB; zero means unlimited
     bool no_flop_no_drop = true;
+    RakeMode mode = RakeMode::Percentage;
+    double fixed = 0.0;    // BB per eligible pot, not per player
+
+    bool is_fixed() const { return mode == RakeMode::Fixed; }
+    bool operator==(const RakeRules& other) const {
+        return rate == other.rate && cap == other.cap && no_flop_no_drop == other.no_flop_no_drop
+            && mode == other.mode && fixed == other.fixed;
+    }
 
     void validate() const {
-        if (!std::isfinite(rate) || rate < 0 || rate > 1 || !std::isfinite(cap) || cap < 0)
-            throw std::invalid_argument("rake rate must be in [0,1]; cap must be finite and >= 0");
+        if (!std::isfinite(rate) || rate < 0 || rate > 1 || !std::isfinite(cap) || cap < 0
+            || !std::isfinite(fixed) || fixed < 0)
+            throw std::invalid_argument("rake rate must be in [0,1]; cap and fixed rake must be finite and >= 0");
+        if (mode != RakeMode::Percentage && mode != RakeMode::Fixed)
+            throw std::invalid_argument("invalid rake mode");
+        if ((is_fixed() && (rate != 0 || cap != 0)) || (!is_fixed() && fixed != 0))
+            throw std::invalid_argument("fixed rake and percentage/cap rules are mutually exclusive");
     }
     double amount(double contested_pot, bool showdown) const {
         if (!showdown && no_flop_no_drop) return 0;
-        const double uncapped = contested_pot * rate;
+        const double pot = std::max(0.0, contested_pot);
+        if (is_fixed()) return std::min(pot, fixed);
+        const double uncapped = pot * rate;
         return cap > 0 ? std::min(uncapped, cap) : uncapped;
     }
 };

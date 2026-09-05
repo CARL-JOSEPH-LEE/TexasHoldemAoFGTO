@@ -25,6 +25,33 @@ template<class F> void rejects(F&& f, const char* message) {
     require(threw, message);
 }
 
+void fixed_rake_tests() {
+    const RakeRules fixed{0, 0, true, RakeMode::Fixed, 0.5};
+    const std::array<uint16_t, 4> ranks{400, 400, 200, 100};
+    MultiwayGame g(4, {}, fixed);
+    near(g.settle(3, ranks).rake, .5, "fixed rake on 21.5 BB pot");
+    near(g.settle(15, ranks).rake, .5, "fixed rake unchanged on 40 BB pot");
+    near(g.settle(15, ranks).ev[0], 39.5 / 2 - 10, "split fixed rake once before payout");
+    near(g.settle(1, ranks).rake, 0, "fixed rake respects no flop no drop");
+    auto every_pot = fixed; every_pot.no_flop_no_drop = false;
+    near(MultiwayGame(4, {}, every_pot).settle(1, ranks).rake, .5, "fixed rake on uncontested pot");
+    near(MultiwayGame(4, {}, {.03, .5, false}).settle(1, ranks).rake, .075,
+         "fixed rake differs from percentage with cap");
+    for (int players : {2, 3, 4}) for (bool nfnd : {false, true}) for (double amount : {0.0, .5, 100.0}) {
+        const MultiwayGame small(players, {.05, .1, .2}, {0, 0, nfnd, RakeMode::Fixed, amount});
+        for (unsigned mask = 0; mask < (1u << players); ++mask) {
+            const auto out = small.settle(mask, ranks);
+            const bool showdown = mask && (mask & (mask - 1));
+            near(out.rake, nfnd && !showdown ? 0 : std::min(out.pot, amount), "fixed charge follows eligibility and pot limit");
+            near(std::accumulate(out.ev.begin(), out.ev.end(), out.rake), 0, "fixed rake conserves chips for every active subset");
+        }
+    }
+    rejects([] { MultiwayGame(4, {}, {0, 0, true, RakeMode::Fixed, -.5}); }, "negative fixed rake rejected");
+    rejects([] { MultiwayGame(4, {}, {.03, 0, true, RakeMode::Fixed, .5}); }, "mixed rake modes rejected");
+    rejects([] { MultiwayGame(4, {}, {0, 0, true, static_cast<RakeMode>(2), .5}); }, "unknown rake mode rejected");
+    rejects([] { MultiwayGame(4, {}, {0, 0, true, RakeMode::Fixed, std::numeric_limits<double>::infinity()}); }, "infinite fixed rake rejected");
+}
+
 void rules_tests() {
     std::array<uint16_t, 4> ranks{400, 300, 200, 100};
     for (int n : {2, 3, 4}) {
@@ -107,6 +134,13 @@ void solver_tests() {
         auto calls = uniform(game, 1);
         solver.evaluate(calls, 200000, 42, 2);
         near(calls.expected_rake, n * 0.3, "all call policy: fixed rake", 1e-8);
+        const MultiwayGame fixed_game(n, {}, {0, 0, true, RakeMode::Fixed, .5});
+        auto fixed_calls = uniform(fixed_game, 1);
+        SampledSolver(fixed_game).evaluate(fixed_calls, 10000, 42, 2);
+        near(fixed_calls.expected_rake, .5, "uniform evaluator charges fixed amount once, independent of player count");
+        near(std::accumulate(fixed_calls.ev.begin(), fixed_calls.ev.end(), fixed_calls.expected_rake), 0,
+             "fixed amount evaluation conserves chips", 1e-8);
+        rejects([&] { solver.evaluate(fixed_calls, 1000, 42, 1); }, "evaluation rejects a different rake mode");
         near(std::accumulate(calls.ev.begin(), calls.ev.end(), calls.expected_rake), 0, "evaluated conservation");
         for (int p = 0; p < n; ++p)
             require(std::abs(calls.ev[p] + 0.3) < 6 * calls.ev_std_error[p], "uniform random cards are seat symmetric");
@@ -140,7 +174,7 @@ void solver_tests() {
 
 int main() {
     try {
-        rules_tests(); solver_tests();
+        rules_tests(); fixed_rake_tests(); solver_tests();
         std::cout << checks << " core checks passed\n";
         return 0;
     } catch (const std::exception& e) {

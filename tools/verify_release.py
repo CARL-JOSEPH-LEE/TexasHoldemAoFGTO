@@ -56,6 +56,7 @@ def main():
         )
     data = json.loads(report.read_text(encoding="utf-8"))
     assert data["ok"] and data["focused_audit"] and data["modes"] == [2, 3, 4], data
+    assert data["rake_modes"] == ["percentage", "fixed"] and data["job_history"] >= 2, data
     print(
         json.dumps(
             {
@@ -63,6 +64,7 @@ def main():
                 "modes": data["modes"],
                 "focused_audit": data["focused_audit"],
                 "job_history": data["job_history"],
+                "rake_modes": data["rake_modes"],
                 "report": str(report),
             },
             ensure_ascii=False,

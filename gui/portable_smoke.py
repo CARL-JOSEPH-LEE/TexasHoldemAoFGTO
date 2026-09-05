@@ -19,10 +19,28 @@ def run_smoke(app, window, report_path: Path):
     start = time.monotonic()
     timer = QTimer(window)
     audit_started = False
+    fixed_started = False
+    percentage_ok = False
 
     def finish():
-        nonlocal audit_started
+        nonlocal audit_started, fixed_started, percentage_ok
         if window.process is not None and time.monotonic() - start < 30:
+            return
+        if (
+            not fixed_started
+            and window.process is None
+            and window.current
+            and window.current.source == window.training_output
+        ):
+            percentage_ok = (
+                window.current.params.rake_mode == "percentage"
+                and window.current.params.rake_rate == 0.03
+                and window.current.params.rake_cap == 0.5
+            )
+            fixed_started = True
+            window.rake_mode_input.setCurrentIndex(1)
+            window.fixed_rake_input.setValue(0.5)
+            window.start_training()
             return
         if (
             not audit_started
@@ -43,8 +61,10 @@ def run_smoke(app, window, report_path: Path):
             and doc is not None
             and doc.source == window.training_output
             and doc.players == 4
-            and doc.params.rake_rate == 0.03
-            and doc.params.rake_cap == 0.5
+            and percentage_ok
+            and doc.params.rake_mode == "fixed"
+            and doc.params.rake_fixed == 0.5
+            and doc.params.rake_rate == doc.params.rake_cap == 0
             and len(doc.nodes) == 14
             and window.progress.value() == 100
             and doc.training_method == 2
@@ -65,6 +85,7 @@ def run_smoke(app, window, report_path: Path):
             "audit_samples": doc.audit_samples if doc else 0,
             "focused_audit": bool(window.audits),
             "job_history": len(window.workspace.jobs()),
+            "rake_modes": ["percentage", "fixed"] if ok else [],
             "log": window.log_tail,
         }
         report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")

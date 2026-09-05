@@ -121,7 +121,8 @@ def test_gui_training_and_cancel(window, app, monkeypatch, tmp_path):
     assert not window.training_output.exists()
 
 
-def test_gui_checkpoint_resume_and_uncertainty(window, app, monkeypatch, tmp_path):
+@pytest.mark.parametrize("version", [2, 3, 4])
+def test_gui_checkpoint_resume_and_uncertainty(window, app, monkeypatch, tmp_path, version):
     monkeypatch.setattr(workbench, "user_strategy_dir", lambda: tmp_path)
     window.seed_input.setValue(2**64 - 1)
     window.samples_input.setValue(30000)
@@ -131,6 +132,13 @@ def test_gui_checkpoint_resume_and_uncertainty(window, app, monkeypatch, tmp_pat
     wait_for_job(window, app)
     old = window.current
     checkpoint = window.training_output.with_suffix(".checkpoint")
+    if version < 4:
+        lines = checkpoint.read_text().splitlines()
+        lines[0] = f"AOFCHK{version}"
+        lines[1] = " ".join(lines[1].split()[:7])
+        if version == 2:
+            del lines[3]
+        checkpoint.write_text("\n".join(lines) + "\n", encoding="ascii")
     before = checkpoint.read_bytes()
     assert old.training_method == 2
     assert "置信区间" in window.hand_detail.text()
@@ -200,3 +208,43 @@ def test_oversized_checkpoint_is_rejected_before_read(window, tmp_path):
     window.resume_training(path)
     assert window.process is None
     assert "过大" in window.status_label.text()
+
+
+def test_fixed_rake_ui_training_resume_and_focused_audit(window, app, monkeypatch, tmp_path):
+    monkeypatch.setattr(workbench, "user_strategy_dir", lambda: tmp_path)
+    original_label = window.rules_label.text()
+    window.rake_mode_input.setCurrentIndex(1)
+    assert window.fixed_rake_input.isVisible()
+    assert window.rake_input.isHidden() and window.cap_input.isHidden()
+    assert window.fixed_rake_input.value() == 0.5
+    assert window.rules_label.text() == original_label
+    args = window.training_args(tmp_path / "result.bin")
+    assert args[args.index("--rake-fixed") + 1] == "0.5"
+    assert "--rake-percent" not in args and "--rake-cap" not in args
+    window.samples_input.setValue(30000)
+    window.eval_input.setValue(10000)
+    window.audit_input.setValue(10000)
+    window.no_flop.setChecked(False)
+    window.start_training()
+    wait_for_job(window, app)
+    previous = window.current
+    assert previous.params.rake_mode == "fixed"
+    assert previous.expected_rake == 0.5
+    assert "固定抽水 0.5 BB" in window.rules_label.text()
+    checkpoint = window.training_output.with_suffix(".checkpoint")
+    window.rake_mode_input.setCurrentIndex(0)
+    window.rake_input.setValue(7)
+    window.resume_training(checkpoint)
+    wait_for_job(window, app)
+    assert window.current.params == previous.params
+    assert window.rake_mode_input.currentData() == "fixed"
+    assert window.current.iterations > previous.iterations
+    window.scene_combo.setCurrentIndex(0)
+    window.focus_samples.setCurrentIndex(0)
+    window.start_hand_audit()
+    started = time.monotonic()
+    while window.audit_process is not None and time.monotonic() - started < 20:
+        app.processEvents()
+        QTest.qWait(10)
+    assert window.audit_process is None and window.audits
+    assert "99%" in window.focus_detail.text()
