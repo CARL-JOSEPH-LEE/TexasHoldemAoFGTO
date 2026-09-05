@@ -26,6 +26,7 @@ inline double regret_match_plus(double r_a, double r_b)
 CfrSolver::CfrSolver(const EquityTable& eq, const GameParams& params)
     : m_eq(eq), m_params(params)
 {
+    params.validate();
     const auto classes = all_hand_classes();
     for (int i = 0; i < NUM_HAND_CLASSES; ++i)
         m_combos[i] = classes[i].num_combos();
@@ -340,7 +341,7 @@ Strategy CfrSolver::solve(const Config& cfg)
 
         avg_weight_sum += static_cast<long double>(weight_t);
 
-        if (cfg.on_progress && (t % cfg.log_every == 0 || t == cfg.iterations)) {
+        if (cfg.on_progress && ((cfg.log_every && t % cfg.log_every == 0) || t == cfg.iterations)) {
             std::array<double, NUM_HAND_CLASSES> avg_sb{}, avg_bb{};
             for (int k = 0; k < NUM_HAND_CLASSES; ++k) {
                 avg_sb[k] = static_cast<double>(avg_sb_push[k] / avg_weight_sum);

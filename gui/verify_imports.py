@@ -1,11 +1,14 @@
-from PyQt6 import QtCore
-print("PyQt6", QtCore.PYQT_VERSION_STR, "Qt", QtCore.QT_VERSION_STR)
+from PySide6 import QtCore
+
+print("PySide6", QtCore.PYQT_VERSION_STR, "Qt", QtCore.QT_VERSION_STR)
 
 import sys
 from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import aof2_gui  # noqa: F401
+
 print("aof2_gui imported OK")
 
 base = Path(__file__).resolve().parent.parent

@@ -1,3 +1,4 @@
+#include <filesystem>
 #include "EquityTable.h"
 
 #include <omp/EquityCalculator.h>
@@ -138,7 +139,7 @@ void EquityTable::save(const std::string& path) const
     if (!m_computed)
         throw std::runtime_error("EquityTable::save: table not computed");
 
-    std::ofstream f(path, std::ios::binary);
+    std::ofstream f(std::filesystem::u8path(path), std::ios::binary);
     if (!f) throw std::runtime_error("EquityTable::save: cannot open " + path);
 
     f.write(EQUITY_MAGIC, 8);
@@ -155,10 +156,10 @@ void EquityTable::save(const std::string& path) const
 
 void EquityTable::load(const std::string& path)
 {
-    std::ifstream f(path, std::ios::binary);
+    std::ifstream f(std::filesystem::u8path(path), std::ios::binary);
     if (!f) throw std::runtime_error("EquityTable::load: cannot open " + path);
 
-    char magic[8];
+    char magic[8]{};
     f.read(magic, 8);
     if (std::memcmp(magic, EQUITY_MAGIC, 8) != 0)
         throw std::runtime_error("EquityTable::load: bad magic in " + path);

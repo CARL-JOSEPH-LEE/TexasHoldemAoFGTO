@@ -1,0 +1,44 @@
+研究记录与实现取舍
+核查日期：2026-09-05
+
+本项目的目标模型是 2–4 人、等筹码、无前注、翻前全下或弃牌。四人共有 14 个行动历史、2366 个手牌信息集。169 类手牌依赖全局花色置换对称性；实际发牌和弃牌移除都保留实体牌。本文中的优化与误差仅适用于这个模型。
+
+2026：Faster Game Solving via Hyperparameter Schedules
+作者 Naifeng Zhang、Stephen Marcus McAleer、Tuomas Sandholm，AAAI 2026。
+原文：https://naifeng.github.io/assets/pdf/AAAI_2026_HS.pdf
+扩展版本：https://arxiv.org/abs/2404.09097
+实现采用论文式 2–4 的折扣规则。DCFR 的正遗憾折扣参数为 1.5，负遗憾为 0，策略平均为 2。HS-DCFR(30) 随进度令 alpha 从 1 到 4、beta 从 -1 到 -3、gamma 从 30 到 25。初始调度总周期写入检查点，续训不重新拉伸；超过周期后保持末端参数。实现文件为 src/core/RegretUpdate.h，独立编写，没有复制论文仓库代码。
+论文的双人零和理论没有直接覆盖本项目的四人、抽水及采样更新。本机实际对照未支持将新算法替换为默认。它们作为可选研究实现，默认保留分层线性 CFR。
+
+2026：Parallelizing Counterfactual Regret Minimization
+作者 Juho Kim、Tuomas Sandholm，2026-05-14 预印本。
+原文：https://arxiv.org/abs/2605.14277
+研究将 CFR 改写为线性代数运算并在 GPU 上加速。对本项目，策略数组很小，随机实体牌和范围采样仍占重要成本，直接引入稠密全牌矩阵或 GPU 依赖需要单独的端到端质量与耗时证据。本次保持固定逻辑随机流及 CPU 并行；未将该论文的 GPU 倍数宣传为本项目性能。
+
+2025：Deep (Predictive) Discounted Counterfactual Regret Minimization
+原文：https://arxiv.org/abs/2511.08174
+该工作面向通过交互学习的模型无关神经 CFR，并使用基线降方差。本项目已有可验证的完整 AoF 模型，2366 个信息集可直接存表。本次继续使用表格遗憾和策略，避免额外神经近似误差与训练依赖。
+
+基线实现核对
+Google DeepMind OpenSpiel 的 discounted_cfr.py 用于理解与比照公开 DCFR 规则，未进入运行时依赖。
+https://github.com/google-deepmind/open_spiel/blob/master/open_spiel/python/algorithms/discounted_cfr.py
+也查看了公开 Rust DCFR-SOLVER 的方法和性能取舍，未复制它的实现。
+https://github.com/exinori/DCFR-SOLVER
+
+OMPEval
+上游：https://github.com/zekyll/OMPEval
+保留项目已有的 ISC 许可评估器。新增独立排序与枚举参考实现：不读取 OMPEval 的查表结构，穷举全部 2,598,960 种五张牌，验证 7462 种牌力等级的一一对应及大小顺序；另抽取 50,000 组七张牌，将其结果与 21 种五张子集中的最佳牌力比较。全部通过。该结果验证牌力比较，不单独证明训练策略接近均衡。
+
+精度评估
+新增固定预算的单手条件评估。对当前策略的某个信息集与手牌，将预算集中到该手牌的所有后续行动分层。仍使用实体牌移除、范围条件抽样和概率权重修正。新随机样本独立于训练与原有审计；保存种子、预算和策略 SHA-256。误差区间使用已有经验 Bernstein 方法，并对本手所有后续分层作联合控制。
+每次单手区间仅针对该次固定预算实验。它不是全部手牌的同时区间，也不是反复抽样后挑选最有利结果的保证。内置策略原来的全局同时置信上界不会被单手评估替换。
+
+许可证与发布核查
+PyQt 的官方许可为 GPL 或商业许可；Qt for Python 的相关组件提供 LGPL 选项。本次迁移到 PySide6 Essentials 6.11.2，保留相应许可证，附带 Qt/PySide 源码及重新组合说明，并提供可替换共享库的目录发行版。
+https://riverbankcomputing.com/commercial/license-faq
+https://doc.qt.io/qtforpython-6/licenses.html
+https://www.qt.io/development/open-source-lgpl-obligations
+https://pyinstaller.org/en/stable/license.html
+
+结论边界
+没有宣称商业求解器同等精度、完整无限注德州支持、GPU 加速、精确四人 GTO 或多人纳什收敛证明。对外质量承诺应以本模型的独立偏离评估、置信上界、复现实验和明确游戏规则为依据。

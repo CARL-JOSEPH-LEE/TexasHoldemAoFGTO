@@ -1,0 +1,50 @@
+Bundled sampled strategy provenance
+
+Generated on 2026-09-05 from the sampled CFR implementation in this repository.
+Equal stacks 10 BB; SB 0.5 BB; BB 1 BB; no cap; no-flop-no-drop.
+Training seed 2026, training deals 100000000, independent evaluation deals 5000000.
+Evaluation RNG seed is training seed XOR 0xd1b54a32d192ed03.
+Logical RNG lanes 8; batch size 2048; compiler GCC 16.1.0; Windows x64.
+Sampled deviation is a noisy diagnostic and not a convergence certificate.
+
+strategy_sampled_2p_10bb_rake0.bin
+SHA256 4e42e365a523ce0fa0973b0fbde8fda0a1936a92e3e69b1f3d6a0bc71f8ff5f2
+Command: build/aof2_train.exe --players 2 --rake-percent 0.0 --iters 100000000 --eval-samples 5000000 --seed 2026 --log-every 0 --strategy data/strategy_sampled_2p_10bb_rake0.bin
+EV BB/hand: -0.0453219820, 0.0453219820
+Expected rake BB/hand: 0.0000000000
+Sampled deviation sum BB/hand: 0.0014600184
+
+strategy_sampled_2p_10bb_rake3.bin
+SHA256 401c569d5dcb5669964b9d0ecd669164c00098329bc2953b2a0637654f366c6e
+Command: build/aof2_train.exe --players 2 --rake-percent 3.0 --iters 100000000 --eval-samples 5000000 --seed 2026 --log-every 0 --strategy data/strategy_sampled_2p_10bb_rake3.bin
+EV BB/hand: -0.0972021104, -0.0222324214
+Expected rake BB/hand: 0.1194345318
+Sampled deviation sum BB/hand: 0.0015090582
+
+strategy_sampled_3p_10bb_rake0.bin
+SHA256 fe7af17f2c554a9952f7e52ea1b00e6caa256130dfec4358e23ac2c39a25a827
+Command: build/aof2_train.exe --players 3 --rake-percent 0.0 --iters 100000000 --eval-samples 5000000 --seed 2026 --log-every 0 --strategy data/strategy_sampled_3p_10bb_rake0.bin
+EV BB/hand: 0.2409617664, -0.0877498038, -0.1532119627
+Expected rake BB/hand: 0.0000000000
+Sampled deviation sum BB/hand: 0.0022506342
+
+strategy_sampled_3p_10bb_rake3.bin
+SHA256 f089495071a3d9663be4af37d06d08de422ad9c7e1a8dbcd8773687e2b1ac747
+Command: build/aof2_train.exe --players 3 --rake-percent 3.0 --iters 100000000 --eval-samples 5000000 --seed 2026 --log-every 0 --strategy data/strategy_sampled_3p_10bb_rake3.bin
+EV BB/hand: 0.2133986974, -0.1369695461, -0.2241804236
+Expected rake BB/hand: 0.1477512724
+Sampled deviation sum BB/hand: 0.0025161902
+
+strategy_sampled_4p_10bb_rake0.bin
+SHA256 8895ddd34c50995b9532877c1e6c3a5b03919b9e4b009ecca88c7631af35a16c
+Command: build/aof2_train.exe --players 4 --rake-percent 0.0 --iters 100000000 --eval-samples 5000000 --seed 2026 --log-every 0 --strategy data/strategy_sampled_4p_10bb_rake0.bin
+EV BB/hand: 0.1698851507, 0.2451881592, -0.1224568135, -0.2926164964
+Expected rake BB/hand: 0.0000000000
+Sampled deviation sum BB/hand: 0.0055515230
+
+strategy_sampled_4p_10bb_rake3.bin
+SHA256 c586e7835b9f8a2b171ecd761f4e04b57064fa0bfe3953ef9c156fcc4de7ab4f
+Command: build/aof2_train.exe --players 4 --rake-percent 3.0 --iters 100000000 --eval-samples 5000000 --seed 2026 --log-every 0 --strategy data/strategy_sampled_4p_10bb_rake3.bin
+EV BB/hand: 0.1478030902, 0.2157090276, -0.1696458499, -0.3566149707
+Expected rake BB/hand: 0.1627487029
+Sampled deviation sum BB/hand: 0.0045778589

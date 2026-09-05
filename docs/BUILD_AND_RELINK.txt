@@ -1,0 +1,30 @@
+构建和替换依赖
+
+支持本地 Windows x64 桌面运行。C++17、CMake、Ninja / Visual Studio、Python 3.12。
+从应用源码压缩包解压后，在项目目录运行：
+python -m pip install -r requirements-dev.txt
+python tools/build.py
+python -m pytest -q
+python gui/aof2_gui.py
+
+生成目录发行版：
+python tools/prepare_sources.py
+python tools/package_gui.py --format onedir
+生成单文件便携版：
+python tools/package_gui.py --format onefile
+
+发行版的 dependency-sources 中包含本次使用的 Qt / PySide / Shiboken 源码。
+third_party/sources.json 记录下载来源、版本和校验值。
+Qt 官方构建说明：https://doc.qt.io/qt-6/windows-building.html
+PySide 官方构建说明：https://doc.qt.io/qtforpython-6/building_from_source/windows.html
+
+修改 Qt / PySide 后，可按其官方说明构建与 Python 3.12、Qt 6.11.2 ABI 兼容的版本。
+目录发行版使用 _internal/PySide6 下的共享库与 plugins，可替换为兼容的修改版。
+保留目录结构、位数、依赖 DLL 和插件布局，重新启动应用即可。不校验或限制 Qt 库签名。
+也可在构建环境中安装修改后的 PySide wheel，再运行打包脚本重新组合应用。
+本应用源码为 MIT；关于 LGPL 组件修改、重新链接及调试的权利见随附许可证。
+
+所有策略、检查点和日志保存在本机。源码运行默认 data/local；便携运行使用系统应用数据目录。
+可通过 AOF_STRATEGY_DIR 指定可写目录。目录版应整体移动，不能只复制其中的 exe。
+
+发行包尚未做商业代码签名。未自动发布、上传仓库或开启远程服务。

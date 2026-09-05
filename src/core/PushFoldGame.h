@@ -1,5 +1,8 @@
 #pragma once
 
+#include <cmath>
+#include <stdexcept>
+
 namespace aof2 {
 
 struct GameParams
@@ -7,6 +10,13 @@ struct GameParams
     double sb_blind = 0.5;
     double bb_blind = 1.0;
     double stack    = 10.0;
+
+    void validate() const
+    {
+        if (!std::isfinite(stack) || !std::isfinite(sb_blind) || !std::isfinite(bb_blind)
+            || sb_blind <= 0 || bb_blind < sb_blind || stack <= bb_blind || stack > 1000000)
+            throw std::invalid_argument("require 0 < SB <= BB < stack <= 1000000 (all finite)");
+    }
 
     double sb_remaining_after_blind() const { return stack - sb_blind; }
     double bb_remaining_after_blind() const { return stack - bb_blind; }

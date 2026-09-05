@@ -1,3 +1,4 @@
+#include <filesystem>
 #include "ThreeWayEquityTable.h"
 
 #include <omp/EquityCalculator.h>
@@ -175,7 +176,7 @@ void ThreeWayEquityTable::save(const std::string& path) const
     if (!m_computed)
         throw std::runtime_error("ThreeWayEquityTable::save: not computed");
 
-    std::ofstream f(path, std::ios::binary);
+    std::ofstream f(std::filesystem::u8path(path), std::ios::binary);
     if (!f) throw std::runtime_error("ThreeWayEquityTable::save: cannot open " + path);
 
     f.write(EQ3W_MAGIC, 8);
@@ -190,10 +191,10 @@ void ThreeWayEquityTable::save(const std::string& path) const
 
 void ThreeWayEquityTable::load(const std::string& path)
 {
-    std::ifstream f(path, std::ios::binary);
+    std::ifstream f(std::filesystem::u8path(path), std::ios::binary);
     if (!f) throw std::runtime_error("ThreeWayEquityTable::load: cannot open " + path);
 
-    char magic[8];
+    char magic[8]{};
     f.read(magic, 8);
     if (std::memcmp(magic, EQ3W_MAGIC, 8) != 0)
         throw std::runtime_error("ThreeWayEquityTable::load: bad magic");

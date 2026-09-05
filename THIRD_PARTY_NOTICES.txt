@@ -1,0 +1,52 @@
+Texas Hold'em AoF Studio 3.0.0
+
+Application code: Copyright (c) 2026 CARL JOSEPH LEE, MIT. See LICENSE.
+
+OMPEval: Copyright (c) 2016 Timo A., ISC.
+Upstream: https://github.com/zekyll/OMPEval
+Existing vendored evaluator retained; this release independently validates its
+five-card ordering exhaustively and seven-card best-five selection by sampling.
+OMPEval's libdivide has its own license, retained in OMPEval/LICENSE-libdivide.txt.
+
+Qt 6.11.2, PySide6 Essentials 6.11.2 and Shiboken6 6.11.2:
+Copyright The Qt Company Ltd. and contributors. The application uses the LGPLv3
+option for the relevant Qt Core, Gui, Widgets and supporting libraries, rather
+than the former PyQt GPL/commercial binding. Full LGPLv3 and GPLv3 texts and
+upstream attribution files are in third_party/licenses and the release licenses
+directory. Third-party components retain their individual license terms.
+Source archives for Qt Base, SVG, Image Formats, PySide and Shiboken accompany
+the folder release in dependency-sources. Their URLs and SHA-256 are recorded
+in third_party/sources.json. No Qt or PySide source modifications were made.
+
+You may modify and replace the LGPL libraries and reverse engineer this
+application to debug those modifications. The folder release uses replaceable
+shared libraries under _internal/PySide6. Replace them with ABI-compatible
+builds, preserving plugin locations, and start the executable normally. The
+application performs no signature enforcement on these libraries. Application
+source and build scripts accompany the release so a combined executable can
+also be rebuilt against modified libraries. See docs/BUILD_AND_RELINK.txt.
+The single-executable convenience build should be redistributed together with
+the complete folder/source package, its dependency sources and these notices.
+
+Python 3.12: Python Software Foundation License and incorporated notices are
+included in third_party/licenses/Python-3.12-LICENSE.txt.
+PyInstaller 6.22.2: GPL with its bootloader distribution exception; this exception
+allows packaging applications under their own licenses. The full license is
+included in the release's licenses directory. Build-time packages have their
+own metadata/license files in the dependency manifest.
+
+Native MinGW GCC runtime: GNU libgcc/libstdc++ use GPLv3 with the GCC Runtime
+Library Exception. MinGW-w64 and winpthreads retain their upstream notices.
+Microsoft system/runtime DLLs retain their applicable redistribution terms.
+
+Research references are in docs/research.txt. DCFR and HS schedules in this
+application are independent implementations of published equations. No code
+from the comparison solver repositories or OpenSpiel was copied into the
+shipping engine, and no unlicensed solver was incorporated.
+
+License files extracted from upstream source archives may describe optional
+tools, examples and tests as well as runtime components; their presence does
+not imply that all such components are linked into the executable. The release
+manifest lists the actual distributed files. This notice is not a claim that
+any future distribution channel or proprietary license automatically satisfies
+all applicable obligations.

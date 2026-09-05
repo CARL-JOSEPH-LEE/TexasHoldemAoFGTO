@@ -1,38 +1,94 @@
-# Local environment files
+# Local secrets and Python environments
 .env
 .env.*
 !.env.example
 !.env.sample
-
-# Python virtual environments
 .venv/
 venv/
 env/
 ENV/
 
-# Python cache and local test cache
+# Python caches, coverage and local tooling
 __pycache__/
 *.py[cod]
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+*.egg-info/
 
-# Intermediate build output
-build/
-dist/
+# CMake and native build products; retain upstream source and licenses
+/build/
+/build-*/
+/cmake-build-*/
+/CMakeFiles/
+/CMakeCache.txt
+/cmake_install.cmake
+/CTestTestfile.cmake
+/Testing/
+*.o
+*.obj
+*.a
+*.lib
+*.so
+*.so.*
+*.dylib
+*.dll
+*.exe
+*.pdb
+*.ilk
+*.exp
+*.idb
+*.pch
+*.ipch
 
-# Final portable GUI package is intentionally tracked
-!gui_portable/
-!gui_portable/TexasHoldemAoFGTO/
-!gui_portable/TexasHoldemAoFGTO/**
+# Release artifacts belong in GitHub Releases, not the source tree
+/dist/
+/gui_portable/
+*.spec
+*.zip
+*.7z
+*.tar
+*.tar.gz
+*.tar.xz
+*.tgz
+/TexasHoldemAoFGTO.manifest.json
+/release-manifest.json
 
-# Local IDE / editor settings
+# Personal training runs, downloads, benchmark logs and one-off notes
+/work/
+/outputs/
+/benchmarks/
+/scratch/
+/tmp/
+/docs/local/
+*.log
+*.log.*
+*.tmp
+*.download
+*.checkpoint
+*.sqlite
+*.sqlite-*
+*.sqlite3
+*.sqlite3-*
+
+# Only reviewed built-in strategies and provenance belong in data/
+/data/*
+!/data/strategy_10bb.bin
+!/data/strategy_3p_10bb.bin
+!/data/strategy_sampled_[234]p_10bb_rake[03].bin
+!/data/strategy_stratified_[234]p_10bb_rake[03].bin
+!/data/PROVENANCE*.txt
+
+# Do not ignore *.txt: CMake, requirements and third-party licenses need them
+
+# Local IDE settings and OS metadata
 .idea/
 .vscode/
 *.swp
 *.swo
-
-# OS metadata
 .DS_Store
 Thumbs.db
 desktop.ini

@@ -3,9 +3,9 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from PyQt6.QtCore import QTimer
-from PyQt6.QtWidgets import QApplication
 from aof2_gui import AppWindow, load_bundle
+from PySide6.QtCore import QTimer
+from PySide6.QtWidgets import QApplication
 
 base = Path(__file__).resolve().parent.parent
 bundle = load_bundle(base / "data")

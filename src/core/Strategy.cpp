@@ -1,3 +1,4 @@
+#include <filesystem>
 #include "Strategy.h"
 
 #include <cstring>
@@ -11,7 +12,7 @@ static const uint32_t STRAT_VERSION = 2;
 
 void Strategy::save(const std::string& path) const
 {
-    std::ofstream f(path, std::ios::binary);
+    std::ofstream f(std::filesystem::u8path(path), std::ios::binary);
     if (!f) throw std::runtime_error("Strategy::save: cannot open " + path);
 
     f.write(STRAT_MAGIC, 8);
@@ -45,10 +46,10 @@ void Strategy::save(const std::string& path) const
 
 void Strategy::load(const std::string& path)
 {
-    std::ifstream f(path, std::ios::binary);
+    std::ifstream f(std::filesystem::u8path(path), std::ios::binary);
     if (!f) throw std::runtime_error("Strategy::load: cannot open " + path);
 
-    char magic[8];
+    char magic[8]{};
     f.read(magic, 8);
     if (std::memcmp(magic, STRAT_MAGIC, 8) != 0)
         throw std::runtime_error("Strategy::load: bad magic in " + path);

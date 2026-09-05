@@ -1,3 +1,4 @@
+#include <filesystem>
 #include "ThreePlayerStrategy.h"
 
 #include <cstring>
@@ -25,7 +26,7 @@ void r_array(std::ifstream& f, std::array<double, NUM_HAND_CLASSES>& a)
 
 void ThreePlayerStrategy::save(const std::string& path) const
 {
-    std::ofstream f(path, std::ios::binary);
+    std::ofstream f(std::filesystem::u8path(path), std::ios::binary);
     if (!f) throw std::runtime_error("ThreePlayerStrategy::save: cannot open " + path);
 
     f.write(STRAT3_MAGIC, 8);
@@ -67,10 +68,10 @@ void ThreePlayerStrategy::save(const std::string& path) const
 
 void ThreePlayerStrategy::load(const std::string& path)
 {
-    std::ifstream f(path, std::ios::binary);
+    std::ifstream f(std::filesystem::u8path(path), std::ios::binary);
     if (!f) throw std::runtime_error("ThreePlayerStrategy::load: cannot open " + path);
 
-    char magic[8];
+    char magic[8]{};
     f.read(magic, 8);
     if (std::memcmp(magic, STRAT3_MAGIC, 8) != 0)
         throw std::runtime_error("ThreePlayerStrategy::load: bad magic in " + path);

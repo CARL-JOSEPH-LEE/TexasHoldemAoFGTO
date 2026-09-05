@@ -5,9 +5,9 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 os.environ["QT_QPA_PLATFORM"] = "minimal"
 
-from PyQt6.QtCore import QTimer
-from PyQt6.QtWidgets import QApplication
 import aof2_gui
+from PySide6.QtCore import QTimer
+from PySide6.QtWidgets import QApplication
 
 old_show = aof2_gui.AppWindow.show
 

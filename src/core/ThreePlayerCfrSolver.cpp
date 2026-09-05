@@ -29,6 +29,7 @@ ThreePlayerCfrSolver::ThreePlayerCfrSolver(const EquityTable& eq2,
                                             const GameParams& params)
     : m_eq2(eq2), m_eq3(eq3), m_params(params)
 {
+    params.validate();
     const auto classes = all_hand_classes();
     for (int i = 0; i < NUM_HAND_CLASSES; ++i)
         m_combos[i] = classes[i].num_combos();
@@ -290,7 +291,7 @@ ThreePlayerStrategy ThreePlayerCfrSolver::solve(const Config& cfg)
 
         weight_sum += static_cast<long double>(weight_t);
 
-        if (cfg.on_progress && (t % cfg.log_every == 0 || t == cfg.iterations)) {
+        if (cfg.on_progress && ((cfg.log_every && t % cfg.log_every == 0) || t == cfg.iterations)) {
             ThreePlayerStrategy snap;
             snap.params = m_params;
             for (int x = 0; x < N; ++x) {
@@ -547,7 +548,7 @@ void ThreePlayerCfrSolver::compute_evs_(
     }
 }
 
-double ThreePlayerCfrSolver::exploitability_(const ThreePlayerStrategy& s, unsigned threads) const
+double ThreePlayerCfrSolver::exploitability_(const ThreePlayerStrategy& s, unsigned /* threads */) const
 {
     const int N = NUM_HAND_CLASSES;
 

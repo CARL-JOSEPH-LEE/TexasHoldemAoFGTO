@@ -1,0 +1,54 @@
+name: Build and test
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    env:
+      QT_QPA_PLATFORM: offscreen
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -r requirements-dev.txt
+      - run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+      - run: cmake --build build --config Release --parallel 4
+      - run: ctest --test-dir build -C Release --output-on-failure
+      - run: python -m pytest -q
+      - run: python -m ruff check gui tests tools
+
+  sanitize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: cmake -S . -B build -DCMAKE_BUILD_TYPE=RelWithDebInfo -DAOF_SANITIZERS=ON
+      - run: cmake --build build --parallel 4
+      - run: ctest --test-dir build --output-on-failure
+
+  package:
+    if: github.event_name == 'workflow_dispatch'
+    needs: [test, sanitize]
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -r requirements-dev.txt
+      - run: python tools/prepare_sources.py
+      - run: python tools/package_gui.py --format onedir
+      - run: python tools/verify_release.py --exe dist/TexasHoldemAoFGTO/TexasHoldemAoFGTO.exe --work build/portable-check
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AoFStudio-Windows
+          path: dist/AoFStudio-3.0.0-windows-x64.zip
